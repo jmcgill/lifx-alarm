@@ -21,6 +21,7 @@ import android.app.TimePickerDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.View;
@@ -98,7 +99,7 @@ public class AlarmListAdaptor extends BaseAdapter
 			public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
 				Alarm alarm = alarms.get(position);
 				alarm.active = isChecked;
-				SharedPreferences sharedPref = activity.get().getPreferences(Context.MODE_PRIVATE);
+				SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(activity.get());
 				SharedPreferences.Editor editor = sharedPref.edit();
 				editor.putString(alarm.day, alarm.toString());
 				editor.commit();
@@ -132,7 +133,7 @@ public class AlarmListAdaptor extends BaseAdapter
 						switch_.setText(new Integer(hour).toString() + ":" + String.format("%02d", minute) + " AM");
 						
 						// Store new time.
-						SharedPreferences sharedPref = activity.get().getPreferences(Context.MODE_PRIVATE);
+						SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(activity.get());
 						SharedPreferences.Editor editor = sharedPref.edit();
 						editor.putString(alarm.day, alarm.toString());
 						editor.commit();
@@ -151,37 +152,22 @@ public class AlarmListAdaptor extends BaseAdapter
 						if (alarm.day.equalsIgnoreCase(dayOfTheWeek)) {
 							
 							Log.e("LIFX", "Days match");
-							
-							// Get the time at the start of today
-							// String str_date="14-06-2014";
-							// SimpleDateFormat formatter = new SimpleDateFormat("dd-MM-yyyy");
-							// Date date = null;
-							
 							// The beginning of today.
 							d.setHours(0);
 							d.setMinutes(0);
 							d.setSeconds(0);
 							
-							//try {
-							//	date = (Date)formatter.parse(str_date);
-							//} catch (ParseException e) {
-							//	// TODO Auto-generated catch block
-							//	e.printStackTrace();
-							//} 
-							//Log.e("LIFX", "Today is " + date.getTime());
-							
-							Long timestamp = new Long(System.currentTimeMillis());
 							am.cancel(pi);
-							// TEMPORARY
-							am.setExact(AlarmManager.RTC_WAKEUP, d.getTime() + ((alarm.hour * 3600) + (alarm.minute * 60)) * 1000, pi);
+							long alarmTime =  d.getTime() + ((alarm.hour * 3600) + (alarm.minute * 60)) * 1000;
 							
-							Log.e("LIFX", "Alarm at time: " + new Long(d.getTime() + ((alarm.hour * 3600) + (alarm.minute * 60)) * 1000).toString());
-							Log.e("LIFX", "Current time: " + timestamp.toString());
+							// Subtract 8 minutes for light show.
+							alarmTime -= (8 * 60 * 1000);
+							
+							am.setExact(AlarmManager.RTC_WAKEUP,alarmTime, pi);
 						}
 					}
 				}, (int) (long) alarms.get(position).hour, (int) (long) alarms.get(position).minute, false);
 				dialog.show();
-				// showTimeDialog(v);
 			}
 		});
 		

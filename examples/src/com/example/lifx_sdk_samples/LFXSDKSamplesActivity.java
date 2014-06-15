@@ -20,14 +20,18 @@ import lifx.java.android.entities.LFXHSBKColor;
 import lifx.java.android.entities.LFXTypes.LFXPowerState;
 import lifx.java.android.network_context.LFXNetworkContext;
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityManager.RunningServiceInfo;
 import android.app.AlarmManager;
 import android.app.Dialog;
 import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
@@ -38,6 +42,10 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
+import android.os.Message;
+import android.os.Messenger;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -56,8 +64,8 @@ public class LFXSDKSamplesActivity extends Activity
 	private MulticastLock ml = null;
 	private AlarmListAdaptor alarmListAdapter = null;
 	private Log log;
-	private BroadcastReceiver br;
-	private BroadcastReceiver br2;
+	// private BroadcastReceiver br;
+	// private BroadcastReceiver br2;
 	private Handler handler;
 	private final ArrayList<String> wakeupColors = new ArrayList<String>(
 			Arrays.asList(
@@ -66,7 +74,7 @@ public class LFXSDKSamplesActivity extends Activity
 					// Purple
 					"305,80,44",
 					// White
-					"247,8,98",
+					"344,84,85",
 					"247,8,98",
 					"247,8,98"
 					));
@@ -82,8 +90,7 @@ public class LFXSDKSamplesActivity extends Activity
 	private float bBase = 0;
 	private final Activity outerThis = this;
 	
-	//private final int delayBetweenScenes = 2 * 60 * 1000;
-	private final int delayBetweenScenes = 11000;
+	private Messenger serviceMessenger;
 
 	MediaPlayer player;
 	
@@ -107,159 +114,35 @@ public class LFXSDKSamplesActivity extends Activity
 		}
 	};
 	
-	Runnable wakeup = new Runnable() {
-		@Override
-		public void run() {
-			// Avoid waking up on the first iteration because it will flash brightly first.
-			if (wakeupCounter == 1) {
-				networkContext.getAllLightsCollection().setPowerState(LFXPowerState.ON);
-			}
-			
-			Log.e("LIFX", "Counter: " + new Integer(wakeupCounter).toString());
-			String color = wakeupColors.get(wakeupCounter);
-			String[] parts = color.split(",");
-			
-			hBase = Float.valueOf(parts[0]);
-			sBase = (float)(Float.valueOf(parts[1]) / 100.0);
-			bBase = (float)(Float.valueOf(parts[2]) / 100.0); 
-			
-//			String nextColor = wakeupColors.get((int)(wakeupCounter / 100) + 1);
-//			String[] nextParts = nextColor.split(",");
-//			
-//			Log.e("LIFX", "From: " + color + " to " + nextColor);
-//			
-//			float hNext = Float.valueOf(nextParts[0]);
-//			float sNext = (float)(Float.valueOf(nextParts[1]) / 100.0);
-//			float bNext = (float)(Float.valueOf(nextParts[2]) / 100.0);
-			
-//			hIncrease = (hNext - hBase) / 100.0;
-//			sIncrease = (sNext - sBase) / 100.0;
-//			bIncrease = (bNext - bBase) / 100.0;
-			
-			LFXHSBKColor hsbkColor = LFXHSBKColor.getColor(hBase, sBase, bBase, 3500);
-		    networkContext.getAllLightsCollection().setColorOverDuration(hsbkColor, 10000);
-		    
-//		    hBase += hIncrease;
-//		    sBase += sIncrease;
-//		    bBase += bIncrease;
-		    
-		    // Log.e("LIFX", "Color: " + new Float(hBase).toString() + ", " + new Float(sBase).toString() + ", " + new Float(bBase).toString());
-			
-		    wakeupCounter += 1;
-		    
-		    // TODO(jmcgill): Change to set color over duration.
-		    // Log.e("LIFX", "Wakeup counter: " + new Integer(wakeupCounter).toString());
-		    if (wakeupCounter < 5) {
-			  handler.postDelayed(wakeup, delayBetweenScenes);
-			} else {
-				// Time for the alarm to go off.
-				Intent i2;
-        		PackageManager manager = getPackageManager();
-        		i2 = manager.getLaunchIntentForPackage("com.example.lifx_sdk_samples");
-				i2.addCategory(Intent.CATEGORY_LAUNCHER);
-				i2.putExtra("Instruction", "Alarm");
-				startActivity(i2);
-			}
-		}
-	};
+	private boolean isMyServiceRunning(Class<?> serviceClass) {
+	    ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+	    for (RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+	        if (serviceClass.getName().equals(service.service.getClassName())) {
+	            return true;
+	        }
+	    }
+	    return false;
+	}
 	
-//	Runnable wakeup = new Runnable() {
-//		@Override
-//		public void run() {
-//			networkContext.getAllLightsCollection().setPowerState( LFXPowerState.ON);
-//			
-//			if ((wakeupCounter % 100) == 0) {
-//				Log.e("LIFX", "Counter: " + new Integer(wakeupCounter).toString());
-//				String color = wakeupColors.get((wakeupCounter / 100));
-//				String[] parts = color.split(",");
-//				
-//				hBase = Float.valueOf(parts[0]);
-//				sBase = (float)(Float.valueOf(parts[1]) / 100.0);
-//				bBase = (float)(Float.valueOf(parts[2]) / 100.0); 
-//				
-//				String nextColor = wakeupColors.get((int)(wakeupCounter / 100) + 1);
-//				String[] nextParts = nextColor.split(",");
-//				
-//				Log.e("LIFX", "From: " + color + " to " + nextColor);
-//				
-//				float hNext = Float.valueOf(nextParts[0]);
-//				float sNext = (float)(Float.valueOf(nextParts[1]) / 100.0);
-//				float bNext = (float)(Float.valueOf(nextParts[2]) / 100.0);
-//				
-//				hIncrease = (hNext - hBase) / 100.0;
-//				sIncrease = (sNext - sBase) / 100.0;
-//				bIncrease = (bNext - bBase) / 100.0;
-//			}
-//			
-//			LFXHSBKColor hsbkColor = LFXHSBKColor.getColor(hBase, sBase, bBase, 3500);
-//		    networkContext.getAllLightsCollection().setColor(hsbkColor);
-//		    
-//		    hBase += hIncrease;
-//		    sBase += sIncrease;
-//		    bBase += bIncrease;
-//		    
-//		    // Log.e("LIFX", "Color: " + new Float(hBase).toString() + ", " + new Float(sBase).toString() + ", " + new Float(bBase).toString());
-//			
-//		    wakeupCounter += 1;
-//		    
-//		    // TODO(jmcgill): Change to set color over duration.
-//		    // Log.e("LIFX", "Wakeup counter: " + new Integer(wakeupCounter).toString());
-//		    if (wakeupCounter < 300) {
-//				if ((wakeupCounter % 100) == 0) {
-//				  handler.postDelayed(wakeup, 10000);
-//				} else {
-//		    	  handler.postDelayed(wakeup, 50);
-//				}
-//			} else {
-//				Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM); 
-//				player  = new MediaPlayer();
-//				try {
-//					player.setDataSource(outerThis, alert);
-//				} catch (IllegalArgumentException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				} catch (SecurityException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				} catch (IllegalStateException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				} catch (IOException e) {
-//					// TODO Auto-generated catch block
-//					e.printStackTrace();
-//				}
-//				final AudioManager audioManager = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
-//
-//				if (audioManager.getStreamVolume(AudioManager.STREAM_ALARM) != 0) {
-//				    player.setAudioStreamType(AudioManager.STREAM_ALARM);
-//				    player.setLooping(true);
-//				    try {
-//						player.prepare();
-//					} catch (IllegalStateException e) {
-//						// TODO Auto-generated catch block
-//						e.printStackTrace();
-//					} catch (IOException e) {
-//						// TODO Auto-generated catch block
-//						e.printStackTrace();
-//					}
-//				    player.start();
-//				}
-//				
-//     			TextView alarmText = (TextView) findViewById(R.id.awakeText);
-//     			alarmText.setVisibility(View.VISIBLE);
-//     			
-//     			alarmText.setOnClickListener(new OnClickListener() {
-//					@Override
-//					public void onClick(View v) {
-//						player.stop();
-//						
-//						TextView alarmText = (TextView) findViewById(R.id.awakeText);
-//		     			alarmText.setVisibility(View.GONE);	
-//					}
-//     			});
-//			}
-//		}
-//	};
+	private ServiceConnection serviceConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            serviceMessenger = new Messenger(service);
+            Log.e("LIFX", "Attached to service");
+//            try {
+//                Message msg = Message.obtain(null, RegisterAlarmService.MSG_REGISTER_CLIENT);
+//                msg.replyTo = mMessenger;
+//                mService.send(msg);
+//            } catch (RemoteException e) {
+//                // In this case the service has crashed before we could even do anything with it
+//            }
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            // This is called when the connection with the service has been unexpectedly disconnected - process crashed.
+            serviceMessenger = null;
+            Log.e("LIFX", "Disconnected from service");
+        }
+    };
 	
 	@Override
 	protected void onCreate( Bundle savedInstanceState)
@@ -268,18 +151,27 @@ public class LFXSDKSamplesActivity extends Activity
 		
 		Log.e("LIFX", "onCreate");
 		
-		Window win = getWindow();
-		win.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
-		win.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON);
+		// Ensure the service is running.
+		if (!isMyServiceRunning(RegisterAlarmService.class)) {
+			Intent startServiceIntent = new Intent(this, RegisterAlarmService.class);
+			this.startService(startServiceIntent);
+		}
+		
+		// Bind to the background service.
+		// bindService(new Intent(this, RegisterAlarmService.class), serviceConnection, Context.BIND_AUTO_CREATE);
 		
 		// A Multicast lock should be acquired, as some phones disable UDP broadcast / recieve
-		WifiManager wifi;
-      	wifi = (WifiManager) getSystemService( Context.WIFI_SERVICE);
-      	ml = wifi.createMulticastLock( "lifx_samples_tag");
-      	ml.acquire();
+//		WifiManager wifi;
+//      	wifi = (WifiManager) getSystemService( Context.WIFI_SERVICE);
+//      	ml = wifi.createMulticastLock( "lifx_samples_tag");
+//      	ml.acquire();
 		
 		networkContext = LFXClient.getSharedInstance( getApplicationContext()).getLocalNetworkContext();
-		networkContext.connect();
+// networkContext.connect();
+		
+		Window win = getWindow();
+		win.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+		win.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON);
 		
 		setContentView(R.layout.lifx_main_activity_layout);
 		TextView alarmText = (TextView) findViewById(R.id.awakeText);
@@ -294,6 +186,10 @@ public class LFXSDKSamplesActivity extends Activity
 				String instruction = extra.getString("Instruction");
 				if (instruction != null && instruction.equalsIgnoreCase("Alarm")) {
 					Log.e("LIFX", "Starting alarm");
+					
+					Window win2 = getWindow();
+					win2.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+					win2.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON);
 					
 					Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM); 
 					player  = new MediaPlayer();
@@ -364,12 +260,14 @@ public class LFXSDKSamplesActivity extends Activity
 		sleepText.setOnClickListener(new OnClickListener() {
 			@Override
 			public void onClick(View v) {
-				LFXHSBKColor hsbkColor = LFXHSBKColor.getColor(305, 0.8f, 0.44f, 3500);
+				Log.e("LIFX", "Sleeping");
+				
+				LFXHSBKColor hsbkColor = LFXHSBKColor.getColor(229, 0.95f, 0.60f, 3500);
 			    networkContext.getAllLightsCollection().setColorOverDuration(hsbkColor, 10000);
 			    handler.postDelayed(sleep, 60 * 1000 * 5);
 			    
 			    TextView sleepText = (TextView) findViewById(R.id.sleepText);
-			    sleepText.setText("Sleeping...");
+			    sleepText.setText("Sleeping....");
 			}
 		});
 				
@@ -380,7 +278,7 @@ public class LFXSDKSamplesActivity extends Activity
 		for (int i = 0; i < 7; ++i) {
 			Alarm alarm = new Alarm(days.get(i), 0L, 0L, false);
 			
-			SharedPreferences sharedPref = this.getPreferences(Context.MODE_PRIVATE);
+			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 			Log.e("LIFX", "Checking for preference: " + days.get(i));
 			if (sharedPref.contains(days.get(i))) {
 				Log.e("LIFX", "Found preference.");
@@ -393,92 +291,6 @@ public class LFXSDKSamplesActivity extends Activity
 		alarmListAdapter = new AlarmListAdaptor(this);
 		alarmListAdapter.updateWithAlarms(alarms);
 		alarmListView.setAdapter(alarmListAdapter);
-	
-		br = new BroadcastReceiver() {
-	         @Override
-	         public void onReceive(Context c, Intent i) {	               
-	                Log.e("LIFX", "Waking up to run alarm");
-	                
-	                // Is this alarm still active?
-	                SimpleDateFormat sdf = new SimpleDateFormat("EEEE");
-					Date d = new Date();
-					String dayOfTheWeek = sdf.format(d);
-					  
-					// Read the alarm time for this day.
-					Alarm alarm = new Alarm(dayOfTheWeek, 0L, 0L, true);
-					SharedPreferences sharedPref = outerThis.getPreferences(Context.MODE_PRIVATE);
-					if (sharedPref.contains(dayOfTheWeek)) {
-						Log.e("LIFX", "Found preference for " + dayOfTheWeek);
-						String encodedAlarm = sharedPref.getString(dayOfTheWeek, "");
-						alarm.fromString(encodedAlarm);
-						
-						if (alarm.active == true) {
-							// We want the alarm to go off.
-							wakeupCounter = 0;
-							wakeup.run();
-						}
-					}
-	        		
-	                // 
-	                // networkContext.getAllLightsCollection().setPowerState( LFXPowerState.ON);
-	         }						
-	    };
-	    registerReceiver(br, new IntentFilter("com.example.lifx_sdk_samples") );
-	       
-	    // Setup the midnight alarm and receiver.
-	    Intent i = new Intent("com.example.lifx_sdk_samples.midnight");
-		PendingIntent pi = PendingIntent.getBroadcast(this, 2, i, 0);
-		AlarmManager am = (AlarmManager) this.getSystemService(Context.ALARM_SERVICE);
-		
-		
-		// Run at two minutes past midnight on the next day.
-		Calendar c = Calendar.getInstance();
-		c.set(Calendar.HOUR_OF_DAY, 00);
-		c.set(Calendar.MINUTE, 04);
-		c.set(Calendar.SECOND, 0);
-		c.add(Calendar.DATE, 1);  // number of days to add
-
-		am.cancel(pi);
-		Log.e("LIFX", "Setting alarm for midnight.");
-		am.setExact(AlarmManager.RTC_WAKEUP, c.getTime().getTime(), pi);
-		
-		br2 = new BroadcastReceiver() {
-	         @Override
-	         public void onReceive(Context c, Intent i) {	               
-	              Log.e("LIFX", "It's just past midnight!");
-	              
-	              // What day of the week is it?
-				  SimpleDateFormat sdf = new SimpleDateFormat("EEEE");
-				  Date d = new Date();
-				  String dayOfTheWeek = sdf.format(d);
-				  
-				  // Read the alarm time for this day.
-				  Alarm alarm = new Alarm(dayOfTheWeek, 0L, 0L, true);
-				  SharedPreferences sharedPref = outerThis.getPreferences(Context.MODE_PRIVATE);
-				  if (sharedPref.contains(dayOfTheWeek)) {
-					 Log.e("LIFX", "Found preference for " + dayOfTheWeek);
-					 String encodedAlarm = sharedPref.getString(dayOfTheWeek, "");
-					 alarm.fromString(encodedAlarm);
-				  }
-				  
-				  // Clear date fields to get to start of day.
-				  d.setHours(0);
-				  d.setMinutes(0);
-				  d.setSeconds(0);
-				  
-				  // Schedule an alarm to go off at this time.
-				  Intent i2 = new Intent("com.example.lifx_sdk_samples");
-				  PendingIntent pi = PendingIntent.getBroadcast(outerThis, 1, i2, 0);
-				  AlarmManager am2 = (AlarmManager) outerThis.getSystemService(Context.ALARM_SERVICE);
-			      am2.cancel(pi);
-				  am2.setExact(AlarmManager.RTC_WAKEUP, d.getTime() + ((alarm.hour * 3600) + (alarm.minute * 60)) * 1000, pi);
-				  
-				  Long timestamp = new Long(System.currentTimeMillis());
-				  Log.e("LIFX", "Alarm at time: " + new Long(d.getTime() + ((alarm.hour * 3600) + (alarm.minute * 60)) * 1000).toString());
-				  Log.e("LIFX", "Current time: " + timestamp.toString());
-	         }						
-	    };
-	    registerReceiver(br2, new IntentFilter("com.example.lifx_sdk_samples.midnight") );
 	}
 	
 	@Override
@@ -500,27 +312,6 @@ public class LFXSDKSamplesActivity extends Activity
     	return null;
     }
 	
-//	public void pressedLabelChange( View v)
-//	{
-//		Intent intent = new Intent( getApplicationContext(), LFXSDKLightEditLabelActivity.class);
-//		shouldStopLifxOnPause = false;
-//		startActivity( intent);
-//	}
-//	
-//	public void pressedRandomColor( View v)
-//	{
-//		Intent intent = new Intent( getApplicationContext(), LFXSDKLightRandomColorActivity.class);
-//		shouldStopLifxOnPause = false;
-//		startActivity( intent);
-//	}
-//	
-//	public void pressedPowerChange( View v)
-//	{
-//		Intent intent = new Intent( getApplicationContext(), LFXSDKLightPowerActivity.class);
-//		shouldStopLifxOnPause = false;
-//		startActivity( intent);
-//	}
-	
 	@Override
 	protected void onPause()
 	{
@@ -530,15 +321,11 @@ public class LFXSDKSamplesActivity extends Activity
 //		{
 //			System.out.println( "Stop LIFX");
 //			networkContext.disconnect();
-//			
-//			if( ml != null)
-//			{
+//		
+//			if( ml != null) {
 //				ml.release();
+//				ml = null;
 //			}
-//		}
-//		else
-//		{
-//			System.out.println( "Don't Stop LIFX");
 //		}
 	}
 }
