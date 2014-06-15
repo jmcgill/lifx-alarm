@@ -1,0 +1,72 @@
+<!-- 
+
+  lifx_list_item_layout.xml
+  LIFX
+
+  Created by Jarrod Boyes on 24/03/14.
+  Copyright (c) 2014 LIFX Labs. All rights reserved.
+  
+-->
+
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="60dp">
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginRight="145dp" >
+
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/dayText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:focusable="true"
+        android:paddingBottom="0dp"
+        android:paddingLeft="10dp"
+        android:paddingTop="10dp"
+        android:text="Monday"
+        android:textAppearance="?android:attr/textAppearanceLarge" />
+
+    <View
+        android:layout_width="fill_parent"
+        android:layout_height="1dp"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/awakeText"
+        android:background="@android:color/darker_gray"
+        android:paddingLeft="20dp"
+        android:paddingRight="10dp"
+        android:paddingTop="10dp" />
+
+    <Switch
+        android:id="@+id/timeSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/awakeText"
+        android:layout_alignParentRight="true"
+        android:paddingBottom="25dp"
+        android:paddingRight="10dp"
+        android:paddingTop="10dp"
+        android:text="8:30 AM" />
+
+    <TextView
+        android:id="@+id/awakeText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_below="@+id/dayText"
+        android:paddingBottom="10dp"
+        android:paddingLeft="10dp"
+        android:text="First meeting at 9am"
+        android:textColor="@android:color/darker_gray" />
+
+</RelativeLayout>

@@ -1,0 +1,45 @@
+<!--
+  lifx_main_activity_layout.xml
+  LIFX
+
+  Created by Jarrod Boyes on 24/03/14.
+  Copyright (c) 2014 LIFX Labs. All rights reserved.
+-->
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical" >
+
+        <TextView
+            android:id="@+id/awakeText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#c20000"
+            android:gravity="center_horizontal"
+            android:paddingBottom="10dp"
+            android:paddingTop="10dp"
+            android:text="I&apos;m Awake!"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp" />
+        
+         <TextView
+            android:id="@+id/sleepText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#00881d"
+            android:gravity="center_horizontal"
+            android:paddingBottom="10dp"
+            android:paddingTop="10dp"
+            android:text="Go to sleep"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp" />
+        
+        		<ListView
+        		    android:id="@+id/alarmListView"
+        		    android:layout_width="match_parent"
+        		    android:layout_height="match_parent" >
+
+		</ListView>
+		
+    </LinearLayout>
