@@ -60,7 +60,6 @@ public class AlarmListAdaptor extends BaseAdapter
 	@Override
 	public int getCount()
 	{
-		log.e("LIFX", "Count is: " + new Integer(alarms.size()).toString());
 		return alarms.size();
 	}
 

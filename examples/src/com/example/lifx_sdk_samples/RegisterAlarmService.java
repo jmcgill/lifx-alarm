@@ -32,6 +32,9 @@ public class RegisterAlarmService extends Service {
 	private LFXNetworkContext networkContext;
 	private Handler handler;
 	private MulticastLock ml = null;
+	
+	// Force commit.
+	
 	private int delayBetweenScenes = 60 * 1000 * 1;
 	// private int delayBetweenScenes = 11000;
 	private final ArrayList<String> wakeupColors = new ArrayList<String>(Arrays.asList(
