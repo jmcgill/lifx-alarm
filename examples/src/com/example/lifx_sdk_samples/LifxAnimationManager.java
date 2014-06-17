@@ -27,6 +27,7 @@ import android.net.wifi.WifiManager;
 import android.net.wifi.WifiManager.MulticastLock;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.PowerManager.WakeLock;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
@@ -37,9 +38,11 @@ public class LifxAnimationManager implements LFXNetworkContextListener {
 	private Handler handler;
 	private MulticastLock ml = null;
 	private AnimationCompleteHandler completeHandler;
-
-	private int delayBetweenScenes = 60 * 1000 * 1;
-	// private int delayBetweenScenes = 11000;
+	private MegaLog log;
+	private Boolean beginAnimation = false;
+	
+	// private int delayBetweenScenes = 60 * 1000 * 1;
+	private int delayBetweenScenes = 11000;
 
 	// TODO(jmcgill): Rename and factor out.
 	private int wakeupCounter;
@@ -50,6 +53,10 @@ public class LifxAnimationManager implements LFXNetworkContextListener {
 					// White
 					"344,84,80", "55,72,90", "247,8,98", "247,8,98"));
 
+	public LifxAnimationManager(MegaLog log) {
+		this.log = log;
+	}
+	
 	Runnable wakeup = new Runnable() {
 		@Override
 		public void run() {
@@ -86,10 +93,14 @@ public class LifxAnimationManager implements LFXNetworkContextListener {
 	};
 
 	public void beginAnimation(Context context, AnimationCompleteHandler completeHandler) {
-		Log.e("LIFX", "Running boot handler");
+		log.Log("AnimationManager", "Starting animation");
+		this.completeHandler = completeHandler;
 
 		// Register our delay handler.
 		handler = new Handler();
+		
+		// We want to start animating as soon as the device is connected.
+		beginAnimation = true;
 
 		// A Multicast lock should be acquired, as some phones disable UDP broadcast / receive
 		WifiManager wifi;
@@ -103,6 +114,8 @@ public class LifxAnimationManager implements LFXNetworkContextListener {
 	}
 	
 	public void endAnimation() {
+		log.Log("AnimationManager", "Animation Complete");
+		
 		networkContext.disconnect();
 		networkContext = null;
 		
@@ -116,15 +129,20 @@ public class LifxAnimationManager implements LFXNetworkContextListener {
 	
 	@Override
 	public void networkContextDidConnect(LFXNetworkContext networkContext) {
-		Log.e("LIFX", "Network context connected");
+		log.Log("AnimationManager", "Network context connected");
 		
 		// Once connected we can begin the animation.
-		wakeupCounter = 0;
-		wakeup.run();
+		// TODO(jmcgill): Do we actually need to do this, or will the client cache the state?
+		if (beginAnimation == true) {
+			wakeupCounter = 0;
+			wakeup.run();
+			
+			beginAnimation = false;
+		}
 	}
 	
 	public void networkContextDidDisconnect(LFXNetworkContext networkContext) {
-		Log.e("LIFX", "Network context disconnected");
+		log.Log("AnimationManager", "Network context disconnected");
 	}
 	
 	@Override

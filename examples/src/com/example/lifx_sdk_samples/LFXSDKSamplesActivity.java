@@ -45,6 +45,8 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.PowerManager;
+import android.os.PowerManager.WakeLock;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.View;
@@ -58,13 +60,15 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-public class LFXSDKSamplesActivity extends Activity {
+public class LFXSDKSamplesActivity extends Activity implements LocalAlarmManager.OnAlarmListener {
 	private AlarmListAdaptor alarmListAdapter = null;
 	private Handler handler;
 	private MediaPlayer player;	
 	private MegaLog megaLog;
 	private LocalAlarmManager localAlarmManager;
 	private final Activity outerThis = this;
+	private LifxAnimationManager animationManager;
+	private WakeLock wakeLock;
 
 	/*
 	Runnable sleep = new Runnable() {
@@ -106,12 +110,24 @@ public class LFXSDKSamplesActivity extends Activity {
 		super.onCreate( savedInstanceState);
 		Log.e("LIFX", "onCreate");
 		
+		setContentView(R.layout.lifx_main_activity_layout);
+		
+		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "StayAwakeForAlarm");
+		
 		megaLog = new MegaLog(this);
 		megaLog.Log("", "This is a test");
 		
 		// Set up and manage the alarm functionality.
 		localAlarmManager = new LocalAlarmManager(megaLog, this);
-		localAlarmManager.initialize();
+		localAlarmManager.initialize(this);
+		
+		// Set up the animation manager.
+		this.animationManager = new LifxAnimationManager(megaLog);
+		
+		// Hide the button used to turn off the alarm.
+		TextView alarmText = (TextView) findViewById(R.id.awakeText);
+		alarmText.setVisibility(View.GONE);
 		
 		// Is this the alarm?
 		Intent intent = getIntent();
@@ -121,6 +137,13 @@ public class LFXSDKSamplesActivity extends Activity {
 				String instruction = extra.getString("Instruction");
 				if (instruction != null && instruction.equalsIgnoreCase("Alarm")) {
 					megaLog.Log("",  "Alarm intent triggered");
+					
+					// Keep screen on and bring to foreground.
+					Window win = getWindow();
+					win.addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+					win.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON);
+					
+					beginAlarm();
 				}
 			}
 		}
@@ -138,12 +161,6 @@ public class LFXSDKSamplesActivity extends Activity {
 		win.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
 		win.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON);
 		*/
-		
-		setContentView(R.layout.lifx_main_activity_layout);
-		
-		// Hide the button used to turn off the alarm.
-		TextView alarmText = (TextView) findViewById(R.id.awakeText);
-		alarmText.setVisibility(View.GONE);
 		
 		// Show the list of alarms.
 		ListView alarmListView = (ListView) findViewById(R.id.alarmListView);
@@ -175,6 +192,30 @@ public class LFXSDKSamplesActivity extends Activity {
 		});
 	}
 	
+	@Override
+	public void onAlarm() {
+		wakeLock.acquire();
+		
+		megaLog.Log("Activity", "Alarm listener called");
+		animationManager.beginAnimation(this, new AnimationCompleteHandler() {
+			@Override
+			public void complete() {
+				megaLog.Log("Activity", "Animation complete called");
+				
+				// Intent ourselves to bring a new activity to the front.
+				Intent intent;
+        		PackageManager manager = getPackageManager();
+        		intent = manager.getLaunchIntentForPackage("com.example.lifx_sdk_samples");
+				intent.addCategory(Intent.CATEGORY_LAUNCHER);
+				intent.putExtra("Instruction", "Alarm");
+				startActivity(intent);
+				
+				// TODO(jmcgill): Move this to after the button is pressed.
+				wakeLock.release();
+			}
+		});
+	}
+	
 	protected void beginAlarm() {
 		try {
 			Uri alert = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM); 
@@ -194,6 +235,8 @@ public class LFXSDKSamplesActivity extends Activity {
 		
 		TextView alarmText = (TextView) findViewById(R.id.awakeText);
 		alarmText.setVisibility(View.VISIBLE);
+		
+		Log.e("LIFX", "Awake text visible");
 			
 		TextView sleepText = (TextView) findViewById(R.id.sleepText);
 		sleepText.setVisibility(View.GONE);
@@ -208,6 +251,10 @@ public class LFXSDKSamplesActivity extends Activity {
 	     		
 	     		TextView sleepText = (TextView) findViewById(R.id.sleepText);
 	     		sleepText.setVisibility(View.VISIBLE);
+	     		
+	     		Window win = getWindow();
+	    		win.clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED);
+	    		win.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON | WindowManager.LayoutParams.FLAG_ALLOW_LOCK_WHILE_SCREEN_ON);
 			}
 		});
 	}

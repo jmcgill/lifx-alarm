@@ -29,8 +29,14 @@ import android.util.Log;
 
 // Ensures alarms are run at the right time.
 public class LocalAlarmManager {
+	
+	public interface OnAlarmListener {
+		public void onAlarm();
+	}
+	
 	MegaLog log;
 	Context context;
+	OnAlarmListener listener;
 	
 	LocalAlarmManager(MegaLog log, Context context) {
 		this.log = log;
@@ -122,13 +128,17 @@ public class LocalAlarmManager {
 	         @Override
 	         public void onReceive(Context c, Intent i) {	               
 	                log.Log("LocalAlarmManager", "Alarm triggered.");
+	                listener.onAlarm();
 	         }			
 	    };
 	   
-	public void initialize() {
+	public void initialize(OnAlarmListener listener) {
 		// Register receivers.		
 		context.registerReceiver(br, new IntentFilter("com.example.lifx_sdk_samples") );
 		context.registerReceiver(newDayHandler, new IntentFilter("com.example.lifx_sdk_samples.midnight") );
+		
+		// Register listener.
+		this.listener = listener;
 		
 		// Schedule any alarms due today.
 		scheduleAlarmForToday();
